@@ -29,6 +29,7 @@ def get_data_jhu(which_data='confirmed cases'):
     'occupied Palestinian territory' is renamed to 'Palestine'
     'Gambia, The' is renamed to 'Gambia'
     'Bahamas, The' is renamed to 'Bahamas',
+    'Cabo Verde' is renamed to  'Cape Verde'
 
     :param which_data: {'confirmed cases', 'recovered','deaths'}
     :type which_data: str
@@ -60,6 +61,7 @@ def get_data_jhu(which_data='confirmed cases'):
     df = df.asfreq('d')
 
     df = df.rename(columns={'Bahamas, The': 'Bahamas',
+                            'Cabo Verde': 'Cape Verde',
                             'Taiwan*': 'Taiwan',
                             'Gambia, The': 'Gambia',
                             'occupied Palestinian territory': 'Palestine'})
