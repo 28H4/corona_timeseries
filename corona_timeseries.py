@@ -51,9 +51,11 @@ def get_data_jhu(which_data='confirmed cases'):
     df = df.groupby(['Country']).sum()
 
     df.loc['Serbia'] = df.loc['Serbia'] + df.loc['Kosovo']
+    df.loc['Cape Verde'] = df.loc['Cape Verde'] + df.loc['Cabo Verde']
     df = df.drop(index=[
         'Kosovo',
         'Cruise Ship',
+        'Cabo Verde',
     ])
 
     df = df.transpose()
@@ -61,7 +63,7 @@ def get_data_jhu(which_data='confirmed cases'):
     df = df.asfreq('d')
 
     df = df.rename(columns={'Bahamas, The': 'Bahamas',
-                            'Cabo Verde': 'Cape Verde',
+                            # 'Cabo Verde': 'Cape Verde',
                             'Taiwan*': 'Taiwan',
                             'Gambia, The': 'Gambia',
                             'occupied Palestinian territory': 'Palestine'})
@@ -300,10 +302,11 @@ def plot_timeindex_dataframe(df, countries, fit=True, **kwargs):
 
 if __name__ == "__main__":
     CONF_CASES_DF = get_data_jhu()
+    NEW_CONF_CASES_ABS_DF = CONF_CASES_DF.diff()
+    NEW_CONF_CASES_REL_DF = CONF_CASES_DF.pct_change().rolling(3).mean()*100
+    # print(NEW_CONF_CASES_REL_DF[['Germany', 'Italy', 'Spain', 'US', 'France']].iloc[-14:])
     CONF_CASES_NORM_DF = normalize_to_population(CONF_CASES_DF)
     ACTIVE_CONF_CASES = CONF_CASES_DF - get_data_jhu('recovered')
-
-    # extract_countries_without_case()
 
     fig, ax = set_up_fig(subplots_kwargs={'figsize': (42 / 2.54, 29.7 / 2.54)})
 
@@ -328,7 +331,7 @@ if __name__ == "__main__":
                              fit=True,
                              fit_window=7,
                              fit_forecast=14,
-                             fit_starting_date=date(2020, 3, 9)
+                             # fit_starting_date=date(2020, 3, 9)
                              )
 
     WEEKS_TO_FORECAST = 3
@@ -349,16 +352,17 @@ if __name__ == "__main__":
     #                                                                 'Italy',
     #                                                                 'Poland'],
     #                                           countries_to_exclude=['China'],
-    #                                           threshold=800)
+    #                                           threshold=800)[:15]
     #
     # plot_timeindex_dataframe(CONF_CASES_NORM_DF, COUNTRIES_TO_PLOT,
     #                          fit=True,
     #                          fit_window=7,
     #                          fit_forecast=14,
-    #                          fit_starting_date=date(2020, 2, 1)
+    #                          # fit_starting_date=date(2020, 2, 1)
     #                          )
     #
-    # SUNDAY_AFTER_NEXT_SUNDAY = date.today() + timedelta(days=13 - date.today().weekday())
+    # WEEKS_TO_FORECAST = 3
+    # SUNDAY_AFTER_NEXT_SUNDAY = date.today() + timedelta(days=(WEEKS_TO_FORECAST*7)-1 - date.today().weekday())
     #
     # set_up_axes(log=True,
     #             ylim=(1E0, 1E4),
