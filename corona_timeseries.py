@@ -24,12 +24,11 @@ def get_data_jhu(which_data='confirmed cases'):
     Returns pd.DataFrame (index = date, column = country)
 
     Country specific modifications based on the UN list of countries:
-    'Serbia' and 'Kosovo' are merged into 'Serbia'
+
     'Taiwan*' is renamed to 'Taiwan'
-    'occupied Palestinian territory' is renamed to 'Palestine'
-    'Gambia, The' is renamed to 'Gambia'
-    'Bahamas, The' is renamed to 'Bahamas',
     'Cabo Verde' is renamed to  'Cape Verde'
+    'Timor-Leste' is renamed to 'East Timor'
+    'Diamond Princess' is removed
 
     :param which_data: {'confirmed cases', 'recovered','deaths'}
     :type which_data: str
@@ -39,9 +38,9 @@ def get_data_jhu(which_data='confirmed cases'):
     # github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series
     BASE_URL = r'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/' \
                r'master/csse_covid_19_data/csse_covid_19_time_series/'
-    SPECIFIC_URL = {'confirmed cases': r'time_series_19-covid-Confirmed.csv',
-                    'recovered': r'time_series_19-covid-Recovered.csv',
-                    'deaths': r'time_series_19-covid-Deaths.csv'}
+    SPECIFIC_URL = {'confirmed cases': r'time_series_covid19_confirmed_global.csv',
+                    # 'recovered': r'time_series_19-covid-Recovered.csv',
+                    'deaths': r'time_series_covid19_deaths_global.csv'}
 
     df = pd.read_csv(BASE_URL + SPECIFIC_URL[which_data])
     df = df.drop(['Province/State', 'Lat', 'Long'], axis=1)
@@ -50,23 +49,17 @@ def get_data_jhu(which_data='confirmed cases'):
     df = df.set_index('Country')
     df = df.groupby(['Country']).sum()
 
-    df.loc['Serbia'] = df.loc['Serbia'] + df.loc['Kosovo']
-    df.loc['Cape Verde'] = df.loc['Cape Verde'] + df.loc['Cabo Verde']
-    df = df.drop(index=[
-        'Kosovo',
-        'Cruise Ship',
-        'Cabo Verde',
-    ])
-
     df = df.transpose()
     df.index = pd.to_datetime(df.index)
     df = df.asfreq('d')
 
-    df = df.rename(columns={'Bahamas, The': 'Bahamas',
-                            # 'Cabo Verde': 'Cape Verde',
+    df = df.rename(columns={'Cabo Verde': 'Cape Verde',
+                            'Timor-Leste': 'East Timor',
                             'Taiwan*': 'Taiwan',
-                            'Gambia, The': 'Gambia',
-                            'occupied Palestinian territory': 'Palestine'})
+                            }
+                   )
+
+    df = df.drop(['Diamond Princess'], axis=1)
 
     return df
 
@@ -123,7 +116,10 @@ def normalize_to_population(df_to_norm, norm=1E6):
     normed_df = pd.DataFrame()
 
     for country in df_to_norm.columns:
-        normed_df[country] = df_to_norm[country] / (df_pop.loc[country, 'Population'] / norm)
+        try:
+            normed_df[country] = df_to_norm[country] / (df_pop.loc[country, 'Population'] / norm)
+        except KeyError:
+            print('{} not in list of countries by population (United Nations) from Wikipedia'.format(country))
 
     return normed_df
 
@@ -303,10 +299,11 @@ def plot_timeindex_dataframe(df, countries, fit=True, **kwargs):
 if __name__ == "__main__":
     CONF_CASES_DF = get_data_jhu()
     NEW_CONF_CASES_ABS_DF = CONF_CASES_DF.diff()
-    NEW_CONF_CASES_REL_DF = CONF_CASES_DF.pct_change().rolling(3).mean()*100
-    # print(NEW_CONF_CASES_REL_DF[['Germany', 'Italy', 'Spain', 'US', 'France']].iloc[-14:])
+    NEW_CONF_CASES_REL_DF = CONF_CASES_DF.pct_change().rolling(3).mean() * 100
     CONF_CASES_NORM_DF = normalize_to_population(CONF_CASES_DF)
-    ACTIVE_CONF_CASES = CONF_CASES_DF - get_data_jhu('recovered')
+
+    pd.options.display.float_format = '{:,.1f}%'.format
+    print(' Daily increase of confirmed new infections: \n',NEW_CONF_CASES_REL_DF[['Germany', 'Italy', 'Spain', 'US', 'France', 'Turkey']].iloc[-14:])
 
     fig, ax = set_up_fig(subplots_kwargs={'figsize': (42 / 2.54, 29.7 / 2.54)})
 
@@ -316,7 +313,8 @@ if __name__ == "__main__":
                                                                     'Austria',
                                                                     'Germany',
                                                                     'Italy',
-                                                                    'Poland'],
+                                                                    'Poland',
+                                                                    'Sweden'],
                                               countries_to_exclude=['China',
                                                                     'France',
                                                                     'Korea, South',
@@ -335,7 +333,7 @@ if __name__ == "__main__":
                              )
 
     WEEKS_TO_FORECAST = 3
-    SUNDAY_AFTER_NEXT_SUNDAY = date.today() + timedelta(days=(WEEKS_TO_FORECAST*7)-1 - date.today().weekday())
+    SUNDAY_AFTER_NEXT_SUNDAY = date.today() + timedelta(days=(WEEKS_TO_FORECAST * 7) - 1 - date.today().weekday())
 
     set_up_axes(log=True,
                 ylim=(1E1, 1E6),
@@ -350,9 +348,10 @@ if __name__ == "__main__":
     #                                                                 'Austria',
     #                                                                 'Germany',
     #                                                                 'Italy',
-    #                                                                 'Poland'],
+    #                                                                 'Poland',
+    #                                                                 'Holy See'],
     #                                           countries_to_exclude=['China'],
-    #                                           threshold=800)[:15]
+    #                                           threshold=10)[:15]
     #
     # plot_timeindex_dataframe(CONF_CASES_NORM_DF, COUNTRIES_TO_PLOT,
     #                          fit=True,
