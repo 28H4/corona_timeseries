@@ -25,9 +25,11 @@ def get_data_jhu(which_data='confirmed cases'):
 
     Country specific modifications based on the UN list of countries:
 
+    'Serbia' and 'Kosovo' are merged into 'Serbia
     'Taiwan*' is renamed to 'Taiwan'
     'Cabo Verde' is renamed to  'Cape Verde'
     'Timor-Leste' is renamed to 'East Timor'
+    'West Bank and Gaza' is renamed to 'Palestine'
     'Diamond Princess' is removed
 
     :param which_data: {'confirmed cases', 'recovered','deaths'}
@@ -53,13 +55,16 @@ def get_data_jhu(which_data='confirmed cases'):
     df.index = pd.to_datetime(df.index)
     df = df.asfreq('d')
 
+    df['Serbia'] = df['Serbia']+df['Kosovo']
+
     df = df.rename(columns={'Cabo Verde': 'Cape Verde',
                             'Timor-Leste': 'East Timor',
                             'Taiwan*': 'Taiwan',
+                            'West Bank and Gaza': 'Palestine',
                             }
                    )
 
-    df = df.drop(['Diamond Princess'], axis=1)
+    df = df.drop(['Diamond Princess', 'Kosovo'], axis=1)
 
     return df
 
@@ -299,11 +304,11 @@ def plot_timeindex_dataframe(df, countries, fit=True, **kwargs):
 if __name__ == "__main__":
     CONF_CASES_DF = get_data_jhu()
     NEW_CONF_CASES_ABS_DF = CONF_CASES_DF.diff()
-    NEW_CONF_CASES_REL_DF = CONF_CASES_DF.pct_change().rolling(3).mean() * 100
+    NEW_CONF_CASES_REL_DF = CONF_CASES_DF.pct_change().rolling(4).mean() * 100
     CONF_CASES_NORM_DF = normalize_to_population(CONF_CASES_DF)
 
-    pd.options.display.float_format = '{:,.1f}%'.format
-    print(' Daily increase of confirmed new infections: \n',NEW_CONF_CASES_REL_DF[['Germany', 'Italy', 'Spain', 'US', 'France', 'Turkey']].iloc[-14:])
+    # pd.options.display.float_format = '{:,.1f}%'.format
+    # print(' Daily increase of confirmed new infections: \n',NEW_CONF_CASES_REL_DF[['Germany', 'Italy', 'Spain', 'US', 'France', 'Turkey']].iloc[-14:])
 
     fig, ax = set_up_fig(subplots_kwargs={'figsize': (42 / 2.54, 29.7 / 2.54)})
 
