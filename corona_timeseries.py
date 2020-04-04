@@ -57,7 +57,7 @@ def get_data_jhu(which_data='confirmed cases'):
     df.index = pd.to_datetime(df.index)
     df = df.asfreq('d')
 
-    df['Serbia'] = df['Serbia']+df['Kosovo']
+    df['Serbia'] = df['Serbia'] + df['Kosovo']
 
     df = df.rename(columns={'Burma': 'Myanmar',
                             'Cabo Verde': 'Cape Verde',
@@ -255,14 +255,14 @@ def set_up_axes(ax, **kwargs):
 
     ax.set_xlim(kwargs.get('xmin'), kwargs.get('xmax'))
 
-    ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=mdates.SU))
-    ax.xaxis.set_minor_locator( mdates.DayLocator(interval=1))
+    locator = mdates.WeekdayLocator(byweekday=mdates.SU)
+    formatter = mdates.ConciseDateFormatter(locator)
+
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(formatter)
+    ax.xaxis.set_minor_locator(mdates.DayLocator(interval=1))
 
     ax.yaxis.set_major_formatter(FormatStrFormatter(kwargs.get('y_tick_formatter')))
-
-    ax.tick_params(axis='y', which='minor')
-    plt.setp(ax.get_yminorticklabels()[1::2], visible=False)
-    ax.yaxis.set_minor_formatter(FormatStrFormatter(kwargs.get('y_tick_formatter')))
 
     ax.grid(b=True, which='major', color='grey', linestyle='-')
     ax.grid(b=True, which='minor', color='grey', linestyle='--', linewidth=0.5)
@@ -270,9 +270,7 @@ def set_up_axes(ax, **kwargs):
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
 
-
-
-def plot_timeindex_dataframe(df, countries,ax, fit=True, **kwargs):
+def plot_timeindex_dataframe(df, countries, ax, fit=True, **kwargs):
     """
     Creates scatter plot for alle df.columns in countries.
     :param df: Dataframe with index = DatetimeIndex and colums =countries
@@ -305,81 +303,65 @@ def plot_timeindex_dataframe(df, countries,ax, fit=True, **kwargs):
 
 if __name__ == "__main__":
     CONF_CASES_DF = get_data_jhu()
+    CONF_DEATH_DF = get_data_jhu('deaths')
     NEW_CONF_CASES_ABS_DF = CONF_CASES_DF.diff()
-    NEW_CONF_CASES_REL_DF = CONF_CASES_DF.pct_change().rolling(4).mean() * 100
+    NEW_CONF_CASES_REL_DF = CONF_CASES_DF.pct_change().rolling(1).mean() * 100
     CONF_CASES_NORM_DF = normalize_to_population(CONF_CASES_DF)
 
-    # pd.options.display.float_format = '{:,.1f}%'.format
-    # print(' Daily increase of confirmed new infections: \n',NEW_CONF_CASES_REL_DF[['Germany', 'Italy', 'Spain', 'US', 'France', 'Turkey']].iloc[-14:])
+    pd.options.display.float_format = '{:,.1f}%'.format
+    print(' Daily increase of confirmed new infections: \n',
+          NEW_CONF_CASES_REL_DF[['Germany', 'Italy', 'Spain', 'US', 'France', 'Turkey']].iloc[-14:])
 
-    fig, axs = set_up_fig(subplots_kwargs={'nrows': 1,'figsize': (42 / 2.54, 29.7 / 2.54)})
+    fig, axs = set_up_fig(subplots_kwargs={'nrows': 2, 'ncols': 1, 'figsize': (42 / 2.54, 29.7 / 2.54)})
 
+    WEEKS_TO_FORECAST = 3
+    SUNDAY_AFTER_NEXT_SUNDAY = date.today() + timedelta(days=(WEEKS_TO_FORECAST * 7) - 1 - date.today().weekday())
 
+    current_axes = axs[0]
 
     COUNTRIES_TO_PLOT = select_sort_countries(CONF_CASES_DF, CONF_CASES_DF,
-                                              countries_to_include=['Czechia',
-                                                                    'Japan',
-                                                                    'Austria',
-                                                                    'Germany',
-                                                                    'Italy',
-                                                                    'Poland',
-                                                                    'Sweden'],
-                                              countries_to_exclude=['China',
-                                                                    'France',
-                                                                    'Korea, South',
-                                                                    'Iran',
-                                                                    'Norway',
-                                                                    'Belgium',
-                                                                    'Sweden',
-                                                                    'Denmark'],
-                                              threshold=800)[:20]
+                                              countries_to_include=[],
+                                              countries_to_exclude=[],
+                                              threshold=800)[:10]
 
     plot_timeindex_dataframe(CONF_CASES_DF, COUNTRIES_TO_PLOT,
-                             ax=axs[0],
+                             ax=current_axes,
                              fit=True,
                              fit_window=7,
                              fit_forecast=14,
                              # fit_starting_date=date(2020, 3, 9)
                              )
 
-    WEEKS_TO_FORECAST = 3
-    SUNDAY_AFTER_NEXT_SUNDAY = date.today() + timedelta(days=(WEEKS_TO_FORECAST * 7) - 1 - date.today().weekday())
-
-    set_up_axes(ax=axs[0],
+    set_up_axes(ax=current_axes,
                 log=True,
-                ylim=(1E1, 1E6),
+                ylim=(1E1, None),
                 xmin=date(2020, 2, 16),
                 xmax=SUNDAY_AFTER_NEXT_SUNDAY,
                 ylabel='Confirmed infected persons',
                 y_tick_formatter='%.f')
 
-    # COUNTRIES_TO_PLOT = select_sort_countries(CONF_CASES_NORM_DF, CONF_CASES_DF,
-    #                                           countries_to_include=['Czechia',
-    #                                                                 'Japan',
-    #                                                                 'Austria',
-    #                                                                 'Germany',
-    #                                                                 'Italy',
-    #                                                                 'Poland',
-    #                                                                 'Holy See'],
-    #                                           countries_to_exclude=['China'],
-    #                                           threshold=10)[:15]
-    #
-    # plot_timeindex_dataframe(CONF_CASES_NORM_DF, COUNTRIES_TO_PLOT,
-    #                          fit=True,
-    #                          fit_window=7,
-    #                          fit_forecast=14,
-    #                          # fit_starting_date=date(2020, 2, 1)
-    #                          )
-    #
-    # WEEKS_TO_FORECAST = 3
-    # SUNDAY_AFTER_NEXT_SUNDAY = date.today() + timedelta(days=(WEEKS_TO_FORECAST*7)-1 - date.today().weekday())
-    #
-    # set_up_axes(log=True,
-    #             ylim=(1E0, 1E4),
-    #             xmin=date(2020, 2, 16),
-    #             xmax=SUNDAY_AFTER_NEXT_SUNDAY,
-    #             ylabel='Bestätigte Infizierte pro 1.Mio. Einwohner',
-    #             y_tick_formatter='%.f')
+    current_axes = axs[1]
+
+    COUNTRIES_TO_PLOT = select_sort_countries(CONF_CASES_NORM_DF, CONF_CASES_DF,
+                                              countries_to_include=[],
+                                              countries_to_exclude=[],
+                                              threshold=800)[:20]
+
+    plot_timeindex_dataframe(CONF_CASES_NORM_DF, COUNTRIES_TO_PLOT,
+                             ax=current_axes,
+                             fit=True,
+                             fit_window=7,
+                             fit_forecast=14,
+                             # fit_starting_date=date(2020, 2, 1)
+                             )
+
+    set_up_axes(ax=current_axes,
+                log=True,
+                ylim=(1, None),
+                xmin=date(2020, 2, 16),
+                xmax=SUNDAY_AFTER_NEXT_SUNDAY,
+                ylabel='Confirmed infected per million inhabitants',
+                y_tick_formatter='%.f')
 
     plt.tight_layout()
     plt.show()
