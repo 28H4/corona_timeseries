@@ -25,12 +25,14 @@ def get_data_jhu(which_data='confirmed cases'):
 
     Country specific modifications based on the UN list of countries:
 
+    'Burma' is renamed to 'Myanmar'
     'Serbia' and 'Kosovo' are merged into 'Serbia
     'Taiwan*' is renamed to 'Taiwan'
     'Cabo Verde' is renamed to  'Cape Verde'
     'Timor-Leste' is renamed to 'East Timor'
     'West Bank and Gaza' is renamed to 'Palestine'
     'Diamond Princess' is removed
+    'MS Zaandam'  is removed
 
     :param which_data: {'confirmed cases', 'recovered','deaths'}
     :type which_data: str
@@ -57,14 +59,15 @@ def get_data_jhu(which_data='confirmed cases'):
 
     df['Serbia'] = df['Serbia']+df['Kosovo']
 
-    df = df.rename(columns={'Cabo Verde': 'Cape Verde',
+    df = df.rename(columns={'Burma': 'Myanmar',
+                            'Cabo Verde': 'Cape Verde',
                             'Timor-Leste': 'East Timor',
                             'Taiwan*': 'Taiwan',
                             'West Bank and Gaza': 'Palestine',
                             }
                    )
 
-    df = df.drop(['Diamond Princess', 'Kosovo'], axis=1)
+    df = df.drop(['Diamond Princess', 'Kosovo', 'MS Zaandam'], axis=1)
 
     return df
 
@@ -176,7 +179,7 @@ def extract_countries_without_case():
         'save_countries.xlsx')
 
 
-def fit_exp_growth(series, fit_window=7, starting_date=None, forecast=14):
+def fit_exp_growth(series, ax, fit_window=7, starting_date=None, forecast=14):
     """
     Fit a pd.Series with exponential growth and draw the fit curve as ax.plot()
      on the last used axis instance.
@@ -207,7 +210,7 @@ def fit_exp_growth(series, fit_window=7, starting_date=None, forecast=14):
 
     dti = pd.date_range(series.index[start_index], periods=fit_window + forecast,
                         freq='D')
-    ax = plt.gca()
+
     ax.plot(dti, exp_growth(range(fit_window + forecast), *popt))
 
 
@@ -219,13 +222,15 @@ def set_up_fig(num_colors=10, colormap='tab10', subplots_kwargs={}):
     :param subplots_kwargs: kwargs for plt.subplots e.g. figsize=(13,7)
     :return: fig, ax
     """
-    fig, ax = plt.subplots(**subplots_kwargs)
-    cm = plt.get_cmap(colormap)
-    ax.set_prop_cycle(color=[cm(1. * i / num_colors) for i in range(num_colors)])
-    return fig, ax
+    fig, axs = plt.subplots(**subplots_kwargs)
+    if not hasattr(axs, "__getitem__"):
+        axs = [axs]
+    # cm = plt.get_cmap(colormap)
+    # ax.set_prop_cycle(color=[cm(1. * i / num_colors) for i in range(num_colors)])
+    return fig, axs
 
 
-def set_up_axes(**kwargs):
+def set_up_axes(ax, **kwargs):
     """
     Adjust the ticks on the axis, labeling, etc.
     :param kwargs:
@@ -239,38 +244,35 @@ def set_up_axes(**kwargs):
         xmax (datetime.date): xmax
         y_tick_formatter (str): formatter for y ticks e.g. '%.f' or '%.e'
     """
-    ax = plt.gca()
 
     if kwargs.get('log', True):
-        plt.yscale('log')
+        ax.set_yscale('log')
 
-    plt.ylabel(kwargs.get('ylabel'))
+    ax.set_ylabel(kwargs.get('ylabel'))
 
     if kwargs.get('ylim'):
-        plt.ylim(kwargs.get('ylim')[0], kwargs.get('ylim')[1])
+        ax.set_ylim(kwargs.get('ylim')[0], kwargs.get('ylim')[1])
 
-    plt.xlim(kwargs.get('xmin'), kwargs.get('xmax'))
+    ax.set_xlim(kwargs.get('xmin'), kwargs.get('xmax'))
 
-    sundays = mdates.WeekdayLocator(byweekday=mdates.SU)
-    everyday = mdates.DayLocator(interval=1)
-    ax.xaxis.set_major_locator(sundays)
-    ax.xaxis.set_minor_locator(everyday)
+    ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=mdates.SU))
+    ax.xaxis.set_minor_locator( mdates.DayLocator(interval=1))
 
-    plt.tick_params(axis='y', which='minor')
-
-    plt.setp(ax.get_yminorticklabels()[1::2], visible=False)
     ax.yaxis.set_major_formatter(FormatStrFormatter(kwargs.get('y_tick_formatter')))
+
+    ax.tick_params(axis='y', which='minor')
+    plt.setp(ax.get_yminorticklabels()[1::2], visible=False)
     ax.yaxis.set_minor_formatter(FormatStrFormatter(kwargs.get('y_tick_formatter')))
 
-    plt.grid(b=True, which='major', color='grey', linestyle='-')
-    plt.grid(b=True, which='minor', color='grey', linestyle='--', linewidth=0.5)
+    ax.grid(b=True, which='major', color='grey', linestyle='-')
+    ax.grid(b=True, which='minor', color='grey', linestyle='--', linewidth=0.5)
 
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-
-    plt.tight_layout()
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
 
-def plot_timeindex_dataframe(df, countries, fit=True, **kwargs):
+
+
+def plot_timeindex_dataframe(df, countries,ax, fit=True, **kwargs):
     """
     Creates scatter plot for alle df.columns in countries.
     :param df: Dataframe with index = DatetimeIndex and colums =countries
@@ -291,7 +293,7 @@ def plot_timeindex_dataframe(df, countries, fit=True, **kwargs):
         scatter = ax.scatter(df.index, df[country])
 
         if fit:
-            fit_exp_growth(df[country],
+            fit_exp_growth(df[country], ax,
                            fit_window=kwargs.get('fit_window', 7),
                            forecast=kwargs.get('fit_forecast', 14),
                            starting_date=kwargs.get('fit_starting_date', None))
@@ -310,7 +312,9 @@ if __name__ == "__main__":
     # pd.options.display.float_format = '{:,.1f}%'.format
     # print(' Daily increase of confirmed new infections: \n',NEW_CONF_CASES_REL_DF[['Germany', 'Italy', 'Spain', 'US', 'France', 'Turkey']].iloc[-14:])
 
-    fig, ax = set_up_fig(subplots_kwargs={'figsize': (42 / 2.54, 29.7 / 2.54)})
+    fig, axs = set_up_fig(subplots_kwargs={'nrows': 1,'figsize': (42 / 2.54, 29.7 / 2.54)})
+
+
 
     COUNTRIES_TO_PLOT = select_sort_countries(CONF_CASES_DF, CONF_CASES_DF,
                                               countries_to_include=['Czechia',
@@ -328,9 +332,10 @@ if __name__ == "__main__":
                                                                     'Belgium',
                                                                     'Sweden',
                                                                     'Denmark'],
-                                              threshold=800)
+                                              threshold=800)[:20]
 
     plot_timeindex_dataframe(CONF_CASES_DF, COUNTRIES_TO_PLOT,
+                             ax=axs[0],
                              fit=True,
                              fit_window=7,
                              fit_forecast=14,
@@ -340,7 +345,8 @@ if __name__ == "__main__":
     WEEKS_TO_FORECAST = 3
     SUNDAY_AFTER_NEXT_SUNDAY = date.today() + timedelta(days=(WEEKS_TO_FORECAST * 7) - 1 - date.today().weekday())
 
-    set_up_axes(log=True,
+    set_up_axes(ax=axs[0],
+                log=True,
                 ylim=(1E1, 1E6),
                 xmin=date(2020, 2, 16),
                 xmax=SUNDAY_AFTER_NEXT_SUNDAY,
@@ -375,4 +381,5 @@ if __name__ == "__main__":
     #             ylabel='Bestätigte Infizierte pro 1.Mio. Einwohner',
     #             y_tick_formatter='%.f')
 
+    plt.tight_layout()
     plt.show()
